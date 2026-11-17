@@ -50,7 +50,7 @@ namespace TF2008Updater {
   }
  }
  internal static class UpdateCore {
-  internal const string Version="0.2.0";
+  internal const string Version="0.3.0";
   static readonly JavaScriptSerializer json=new JavaScriptSerializer { MaxJsonLength=int.MaxValue, RecursionLimit=75 };
   internal static string Cache {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"TF2-2008","downloads");}}
   internal static Action<string> Status = delegate {};
@@ -276,9 +276,26 @@ namespace TF2008Updater {
    Say("Índice verificado: "+game.Files.Count+" archivos.");
   }
   static bool AlwaysPreserve(string relative){
-   string name=Path.GetFileName(relative).ToLowerInvariant();
-   return name=="launcher.ini"||name=="config.cfg"||name=="autoexec.cfg"||name=="video.txt"||
-          name=="stats.txt"||name.EndsWith(".log")||name==".tf2updater-state.json";
+   string path=relative.Replace('\\','/').ToLowerInvariant();
+   string name=Path.GetFileName(path);
+   if(path.StartsWith("tf_port/custom/")||path.StartsWith("tf_port/download/")||
+      path.StartsWith("tf_port/downloads/")||path.StartsWith("tf_port/screenshots/")||
+      path.StartsWith("tf_port/addons/")||path.StartsWith("tf_port/replays/")||
+      path.StartsWith("tf_port/save/")||path.StartsWith("tf_port/saves/"))return true;
+   return name=="launcher.ini"||name=="video.txt"||name=="stats.txt"||
+          name.EndsWith(".cfg")||name.EndsWith(".log")||name.EndsWith(".sav")||
+          name.EndsWith(".dem")||name==".tf2updater-state.json";
+  }
+  // Never delete unknown files. Store durable copies of every existing tracked file
+  // before replacing it. Backups are outside tf_port so Source never loads them.
+  static string BackupExisting(string root,string rel,string oldFile,string backupSession){
+   string bak=Destination(root,".tf2-update-backups/"+backupSession+"/"+rel);
+   Directory.CreateDirectory(Path.GetDirectoryName(bak));
+   if(File.Exists(bak))throw new IOException("La copia de seguridad ya existe: "+bak);
+   File.Copy(oldFile,bak,false);
+   if(new FileInfo(bak).Length!=new FileInfo(oldFile).Length||HashFile(bak)!=HashFile(oldFile))
+    throw new IOException("La copia de seguridad no superó SHA-256: "+rel);
+   return bak;
   }
   internal static string GameStateVersion(string root){
    try{
@@ -300,7 +317,8 @@ namespace TF2008Updater {
    Directory.CreateDirectory(root);
    var missingByPack=new Dictionary<string,List<ManifestFile>>(StringComparer.OrdinalIgnoreCase);
    foreach(var p in g.Packs)missingByPack[p.Name]=new List<ManifestFile>();
-   int scan=0,skipped=0,changed=0;
+   int scan=0,skipped=0,changed=0,backedUp=0;
+   string backupSession=DateTime.UtcNow.ToString("yyyyMMdd-HHmmssfff")+"-"+Guid.NewGuid().ToString("N").Substring(0,6);
    Say(repair?"Revisando archivos para reparar…":"Comparando archivos de la versión "+g.Version+"…");
    foreach(var item in g.Files.Values){
     CheckCancel();
@@ -364,6 +382,10 @@ namespace TF2008Updater {
       File.Copy(src,incoming,true);
       if(HashFile(incoming)!=f.Hash)throw new InvalidDataException("Falló el control al escribir "+f.Path);
       if(File.Exists(dest)){
+       // Make a verified, permanent copy BEFORE overwriting any existing file.
+       // Nothing is silently deleted, including modified models/maps/materials.
+       BackupExisting(root,f.Path,dest,backupSession);
+       backedUp++;
        try{File.Replace(incoming,dest,backup,true);}
        catch {
         if(File.Exists(incoming))File.Delete(incoming);
@@ -377,7 +399,9 @@ namespace TF2008Updater {
     Percent(10+(int)(87.0*packCount/actualPacks));
    }
    WriteState(root,g.Version);Percent(100);Say("Juego actualizado y archivos verificados: "+g.Version);
-   return "Versión "+g.Version+": "+changed+" archivos instalados o reparados; "+skipped+" ya correctos.";
+   return "Versión "+g.Version+": "+changed+" instalados o reparados; "+skipped+
+          " correctos. Archivos anteriores respaldados: "+backedUp+
+          (backedUp>0?" (carpeta .tf2-update-backups en el juego).":".");
   }
   static void WriteState(string root,string version){
    string p=Path.Combine(root,".tf2updater-state.json");
@@ -396,6 +420,33 @@ namespace TF2008Updater {
    catch(Exception ex){status+="Launcher: no publicado o inaccesible. "+ex.Message;}
    Percent(100);
    return status;
+  }
+  internal static string AutomaticStartup(string launcherManifestUrl,string gameManifestUrl,string root){
+   var report=new List<string>();
+   try{
+    Say("Comprobando automáticamente el launcher…");
+    string next=DownloadLauncher(launcherManifestUrl);
+    if(next!=null)return "SELFUPDATE:"+next;
+    report.Add("Launcher "+Version+" al día.");
+   }catch(OperationCanceledException){throw;}
+   catch(Exception ex){report.Add("Launcher: no se pudo comprobar. "+ex.Message);}
+   if(!GameLauncher.Valid(root)){
+    report.Add("Juego no instalado en esta carpeta; elegí una carpeta para instalarlo.");
+    return String.Join(" ",report.ToArray());
+   }
+   try{
+    Say("Comprobando automáticamente el juego…");
+    GameRelease g=ReadGame(gameManifestUrl);
+    string installed=GameStateVersion(root);
+    if(String.Equals(installed,g.Version,StringComparison.OrdinalIgnoreCase)){
+     report.Add("Juego "+g.Version+" al día.");
+    }else{
+     Say("Actualización encontrada: "+installed+" -> "+g.Version);
+     report.Add(UpdateGame(gameManifestUrl,root,false));
+    }
+   }catch(OperationCanceledException){throw;}
+   catch(Exception ex){report.Add("Actualización del juego pendiente: "+ex.Message);}
+   return String.Join(" ",report.ToArray());
   }
   internal static string DownloadLauncher(string launcherManifestUrl){
    LauncherRelease l=ReadLauncher(launcherManifestUrl);

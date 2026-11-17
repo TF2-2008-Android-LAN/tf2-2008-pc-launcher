@@ -119,6 +119,11 @@ namespace TF2008Updater {
    BackColor=bg;ForeColor=white;
    try{string i=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"assets","icon.ico");if(File.Exists(i))Icon=new Icon(i);}catch{}
    BuildUi();RefreshState();
+   Shown+=delegate {
+    // The first launch is non-blocking. New launcher versions install first;
+    // after restart the same check continues with the game.
+    BeginInvoke((Action)(delegate { Run("startup"); }));
+   };
   }
   Label L(string text,bool heading=false){
    Label l=new Label();l.Text=text;l.AutoSize=true;l.Margin=new Padding(0,3,6,5);
@@ -336,7 +341,9 @@ namespace TF2008Updater {
      "Confirmar carpeta",MessageBoxButtons.OKCancel,MessageBoxIcon.Information);
     if(answer!=DialogResult.OK)return;
    }
-   try{FromForm().Save();}catch(Exception ex){MessageBox.Show(this,ex.Message,"Configuración");return;}
+   if(action!="startup"){
+    try{FromForm().Save();}catch(Exception ex){MessageBox.Show(this,ex.Message,"Configuración");return;}
+   }
    progress.Value=0;pendingAction=action;ToggleBusy(true);
    job=new BackgroundWorker();job.WorkerReportsProgress=true;job.WorkerSupportsCancellation=true;
    var current=job;
@@ -344,6 +351,7 @@ namespace TF2008Updater {
     UpdateCore.Cancelled=delegate{return current.CancellationPending;};
     UpdateCore.Status=delegate(string status){current.ReportProgress(-1,status);};
     UpdateCore.Progress=delegate(int percent){current.ReportProgress(percent,null);};
+    if(action=="startup")e.Result=UpdateCore.AutomaticStartup(urls.LauncherManifestUrl,urls.GameManifestUrl,root);
     if(action=="check")e.Result=UpdateCore.CheckRemote(urls.GameManifestUrl,urls.LauncherManifestUrl,root);
     if(action=="game"||action=="repair")e.Result=UpdateCore.UpdateGame(urls.GameManifestUrl,root,action=="repair");
     if(action=="launcher"){
@@ -378,7 +386,7 @@ namespace TF2008Updater {
     }
    };
    current.RunWorkerAsync();
-   Note(action=="check"?"Buscando actualizaciones…":action=="launcher"?"Buscando launcher nuevo…":action=="repair"?"Verificando instalación…":"Instalando/actualizando juego…");
+   Note(action=="startup"?"Buscando actualizaciones automáticamente…":action=="check"?"Buscando actualizaciones…":action=="launcher"?"Buscando launcher nuevo…":action=="repair"?"Verificando instalación…":"Instalando/actualizando juego…");
   }
   void InstallGame(object s,EventArgs e){Run("game");}
   void RepairGame(object s,EventArgs e){Run("repair");}
@@ -395,6 +403,9 @@ namespace TF2008Updater {
     if(args.Length>0&&args[0]=="--qa-check"){string root=args.Length>3?args[3]:Path.Combine(Path.GetTempPath(),"tf2008qa");Console.WriteLine(UpdateCore.CheckRemote(args[1],args[2],root));return 0;}
     if(args.Length>0&&args[0]=="--qa-install"){string result=UpdateCore.UpdateGame(args[1],args[2],false);Console.WriteLine(result);return 0;}
     if(args.Length>0&&args[0]=="--qa-repair"){string result=UpdateCore.UpdateGame(args[1],args[2],true);Console.WriteLine(result);return 0;}
+    if(args.Length>0&&args[0]=="--qa-auto"&&args.Length>=4){
+     Console.WriteLine(UpdateCore.AutomaticStartup(args[1],args[2],args[3]));return 0;
+    }
     if(args.Length>0&&args[0]=="--qa-selftest"){
      Console.WriteLine("v="+UpdateCore.Version+" gameConfig="+UpdaterSettings.Load().GameManifestUrl);
      Console.WriteLine("configuredRoot="+PlayerPrefs.Load().Root);return 0;
