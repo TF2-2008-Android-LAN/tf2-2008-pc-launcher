@@ -1,21 +1,21 @@
-{
-  "schema": "tf2-pc-launcher-release-v1",
-  "component": "pc-launcher",
-  "platform": "windows",
-  "version": "0.2.0",
-  "published": false,
-  "releaseTag": "launcher-v0.2.0",
-  "channel": "qa",
-  "asset": {
-    "name": "TF2_2008_Launcher.exe",
-    "url": "https://github.com/TF2-2008-Android-LAN/tf2-2008-pc-launcher/releases/download/launcher-v0.2.0/TF2_2008_Launcher.exe",
-    "bytes": 71680,
-    "sha256": "89cfae6fe754b05468dc0b0abf2028291841a80e7f0c4ef8e32293f6159d052c"
-  },
-  "portable": {
-    "name": "TF2_2008_Launcher_Portable_v0.2.0.zip",
-    "bytes": 91574,
-    "sha256": "90cb08db45ad7831baf04007d2e1919f83b2a20a702df80dd91a2b117f0fe714"
-  },
-  "note": "published=false hasta verificar release remoto"
+﻿{
+    "schema":  "tf2-pc-launcher-release-v1",
+    "component":  "pc-launcher",
+    "platform":  "windows",
+    "version":  "0.2.0",
+    "published":  true,
+    "releaseTag":  "launcher-v0.2.0",
+    "channel":  "qa",
+    "asset":  {
+                  "name":  "TF2_2008_Launcher.exe",
+                  "url":  "https://github.com/TF2-2008-Android-LAN/tf2-2008-pc-launcher/releases/download/launcher-v0.2.0/TF2_2008_Launcher.exe",
+                  "bytes":  71680,
+                  "sha256":  "89cfae6fe754b05468dc0b0abf2028291841a80e7f0c4ef8e32293f6159d052c"
+              },
+    "portable":  {
+                     "name":  "TF2_2008_Launcher_Portable_v0.2.0.zip",
+                     "bytes":  91574,
+                     "sha256":  "90cb08db45ad7831baf04007d2e1919f83b2a20a702df80dd91a2b117f0fe714"
+                 },
+    "note":  "published=false hasta verificar release remoto"
 }
