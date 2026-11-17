@@ -14,8 +14,8 @@
               },
     "portable":  {
                      "name":  "TF2_2008_Launcher_Portable_v0.3.0.zip",
-                     "bytes":  92504,
-                     "sha256":  "41a598771782959f8d35f3d50be165486f5a8214aba52681b4f7426d46cddf6c"
+                     "bytes":  92724,
+                     "sha256":  "ee7e3b6bc747e34e595382a0a743b18e26f16eebf263d931683fb20436956070"
                  },
     "note":  "published=false hasta verificar assets en GitHub"
 }
