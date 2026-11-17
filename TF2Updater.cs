@@ -50,7 +50,7 @@ namespace TF2008Updater {
   }
  }
  internal static class UpdateCore {
-  internal const string Version="0.3.0";
+  internal const string Version="0.3.1";
   static readonly JavaScriptSerializer json=new JavaScriptSerializer { MaxJsonLength=int.MaxValue, RecursionLimit=75 };
   internal static string Cache {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"TF2-2008","downloads");}}
   internal static Action<string> Status = delegate {};

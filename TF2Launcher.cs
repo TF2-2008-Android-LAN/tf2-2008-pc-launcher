@@ -12,7 +12,7 @@ using System.Reflection;
 namespace TF2008Updater {
  internal sealed class PlayerPrefs {
   internal string Root=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"TF2-2008","Juego");
-  internal string Mode="steam",Name="Jugador",Map="";
+  internal string Mode="offline",Name="Jugador",Map="";
   internal bool Windowed=true,Console=true,Insecure=true;
   static string Ini {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"TF2-2008","launcher.ini");}}
   static string LegacyIni {get{return Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"launcher.ini");}}
@@ -25,7 +25,7 @@ namespace TF2008Updater {
     string k=line.Substring(0,i).Trim().ToLowerInvariant(),v=line.Substring(i+1).Trim();
     switch(k){
      case "root":if(v==".")v=AppDomain.CurrentDomain.BaseDirectory;if(v!="")p.Root=v;break;
-     case "mode":p.Mode=v=="offline"?"offline":"steam";break;
+     case "mode":p.Mode=v=="steam"?"steam":"offline";break;
      case "name":p.Name=v;break;
      case "map":p.Map=v;break;
      case "windowed":p.Windowed=v=="1";break;
@@ -71,8 +71,8 @@ namespace TF2008Updater {
    if(p.Windowed)flags.Add("-windowed -w 1280 -h 720");
    if(p.Console)flags.Add("-console -condebug");
    if(p.Insecure||p.Mode=="offline")flags.Add("-insecure");
-   if(p.Mode=="steam")flags.Add("-steam");
-   else flags.Add("+name \""+ValidateName(p.Name)+"\"");
+   if(p.Mode=="steam")flags.Add("-steam"); // steam account only, optional
+   else flags.Add("-nosteam +name \""+ValidateName(p.Name)+"\"");
    string map=ValidateMap(p.Map);
    if(map!="")flags.Add("+sv_lan 1 +maxplayers 16 +map "+map);
    return String.Join(" ",flags.ToArray());
@@ -215,9 +215,10 @@ namespace TF2008Updater {
    var options=CardPanel();var op=Grid(2);
    op.ColumnStyles[0].Width=50;op.ColumnStyles[1].Width=50;
    AddRow(op,L("PERFIL DE JUEGO",true),2);
+   AddRow(op,L("El launcher, la instalación y el motor portable no requieren Steam; Steam es opcional solo para la cuenta."),2);
    var mode=new FlowLayoutPanel();mode.Dock=DockStyle.Fill;mode.AutoSize=true;mode.WrapContents=true;mode.Margin=new Padding(0,8,0,10);
-   steamRadio=new RadioButton();steamRadio.Text="Usar Steam abierto";steamRadio.AutoSize=true;steamRadio.ForeColor=white;steamRadio.Checked=prefs.Mode=="steam";
-   offlineRadio=new RadioButton();offlineRadio.Text="Sin Steam (LAN)";offlineRadio.AutoSize=true;offlineRadio.ForeColor=white;offlineRadio.Checked=prefs.Mode=="offline";
+   steamRadio=new RadioButton();steamRadio.Text="Cuenta Steam (opcional)";steamRadio.AutoSize=true;steamRadio.ForeColor=white;steamRadio.Checked=prefs.Mode=="steam";
+   offlineRadio=new RadioButton();offlineRadio.Text="Sin Steam (modo normal)";offlineRadio.AutoSize=true;offlineRadio.ForeColor=white;offlineRadio.Checked=prefs.Mode=="offline";
    mode.Controls.Add(steamRadio);mode.Controls.Add(offlineRadio);AddRow(op,mode,2);
    r=op.RowCount++;op.RowStyles.Add(new RowStyle(SizeType.AutoSize));
    op.Controls.Add(L("Nombre del jugador (sin Steam)"),0,r);op.Controls.Add(L("Mapa al iniciar (opcional)"),1,r);
@@ -272,6 +273,7 @@ namespace TF2008Updater {
    AddRow(g,L("1. Elegí la carpeta del juego en la pestaña Jugar.\n2. Abrí Instalar / Actualizar y pulsá Instalar.\n3. Cuando termine, abrí Jugar.\n4. Si algo se daña, usá Verificar y reparar."));
    AddRow(g,L("Se preservan las configuraciones personales como config.cfg y autoexec.cfg. La comprobación de archivos usa hashes SHA-256 para evitar instalaciones corruptas."));
    AddRow(g,L("Las actualizaciones del launcher y del juego usan repositorios y versiones separados de GitHub. Si los repositorios todavía no están publicados, el programa te avisa y no intenta inventar archivos."));
+   AddRow(g,L("Steam NO es necesario para descargar, actualizar, reparar ni jugar en modo normal LAN. Solo se utiliza si elegís el modo de cuenta Steam. No instala ni exige Source SDK Base."));
    AddRow(g,L("No modifica ninguna instalación oficial de Steam. Esta versión está en pruebas y todavía no garantiza compatibilidad de red con Android."));
    help.Controls.Add(g);AddRow(content,help);
    var diagnostics=CardPanel();var dg=Grid(1);AddRow(dg,L("REGISTRO DE LA SESIÓN",true));
@@ -405,6 +407,12 @@ namespace TF2008Updater {
     if(args.Length>0&&args[0]=="--qa-repair"){string result=UpdateCore.UpdateGame(args[1],args[2],true);Console.WriteLine(result);return 0;}
     if(args.Length>0&&args[0]=="--qa-auto"&&args.Length>=4){
      Console.WriteLine(UpdateCore.AutomaticStartup(args[1],args[2],args[3]));return 0;
+    }
+    if(args.Length>0&&args[0]=="--qa-launch-args"){
+     PlayerPrefs p=new PlayerPrefs();
+     if(args.Length>1)p.Mode=args[1]=="steam"?"steam":"offline";
+     if(args.Length>2)p.Name=args[2];
+     Console.WriteLine(GameLauncher.Params(p));return 0;
     }
     if(args.Length>0&&args[0]=="--qa-selftest"){
      Console.WriteLine("v="+UpdateCore.Version+" gameConfig="+UpdaterSettings.Load().GameManifestUrl);

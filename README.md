@@ -1,4 +1,4 @@
-# TF2 2008 PC - Launcher 0.3.0
+# TF2 2008 PC - Launcher 0.3.1
 
 Comprobación automática al abrir: primero actualiza el launcher y luego los archivos del juego.
 No elimina archivos adicionales. Conserva configuraciones, mapas personalizados y archivos de usuario.
